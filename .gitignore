@@ -1,0 +1,12 @@
+__pycache__/
+*.pyc
+*.pyo
+out_put/
+logs/
+config/scheme.json
+.nuitka_cache/
+dist/
+nuitka-crash-report.xml
+startup_error.log
+.idea/
+.vscode/
