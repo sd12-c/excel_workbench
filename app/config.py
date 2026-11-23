@@ -2,8 +2,8 @@
 import os
 import sys
 
-APP_NAME = "Excel 批量工作台"
-APP_VERSION = "1.1.1"
+APP_NAME = "Excel 工作台"
+APP_VERSION = "1.3.0"
 APP_SUBTITLE = "Batch Processing Studio"
 
 _PKG_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -20,6 +20,9 @@ RESOURCE_DIR = os.path.join(_PKG_DIR, "resources")
 STYLE_FILE = os.path.join(RESOURCE_DIR, "styles.qss")
 APP_ICON_FILE = os.path.join(RESOURCE_DIR, "app.ico")
 
+# 流水线画布：Vite 构建后的静态页面（file:// 加载，无需本地服务）
+PIPELINE_HTML = os.path.join(RESOURCE_DIR, "pipeline", "index.html")
+
 # 默认输出根目录：<项目根>/out_put
 OUTPUT_DIR = os.path.join(PROJECT_ROOT, "out_put")
 
@@ -31,6 +34,12 @@ ERROR_LOG_FILE = os.path.join(LOG_DIR, "error.log")
 # 保存方案（输出路径 / 勾选参数）的默认配置文件：<项目根>/config/scheme.json
 SCHEME_DIR = os.path.join(PROJECT_ROOT, "config")
 SCHEME_FILE = os.path.join(SCHEME_DIR, "scheme.json")
+# 悬浮透镜收起态的停靠位置（可拖动后记住）
+LENS_STATE_FILE = os.path.join(SCHEME_DIR, "lens_state.json")
+# 流水线模板库（内置模板在代码中，这里只存用户自建模板）
+PIPELINE_TEMPLATE_FILE = os.path.join(SCHEME_DIR, "pipeline_templates.json")
+# QWebEngine 的本地缓存 / 存储，保持绿色版数据随身携带
+PIPELINE_WEBENGINE_DIR = os.path.join(SCHEME_DIR, "webengine")
 
 SUPPORTED_EXCEL = (".xlsx", ".xls", ".xlsm")
 SUPPORTED_CSV = (".csv",)

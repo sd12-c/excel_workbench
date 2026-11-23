@@ -22,7 +22,7 @@ powershell -ExecutionPolicy Bypass -File packaging\build_nuitka.ps1
 
 1. 把 Nuitka 缓存放到项目内 `.nuitka_cache`，避免系统缓存目录权限问题；
 2. 使用 PyQt5 插件、`--onefile` 生成单文件 exe（不把 DLL 散落在 exe 旁边）；
-3. 写入图标和版本信息（v1.1.1 / 产品名称 / 公司 / 版权）；
+3. 写入图标和版本信息（v1.3.0 / 产品名称 / 公司 / 版权）；
 4. 关闭控制台窗口（GUI 程序）；
 5. 只把 exe、`使用指南.pdf`、`使用指南.md`、`README.md` 放入 zip；
 6. 校验 zip 中不包含源码、`.pyc`、`.git`、测试数据、`config`、`logs`、`out_put` 目录；
@@ -34,12 +34,13 @@ powershell -ExecutionPolicy Bypass -File packaging\build_nuitka.ps1
 dist/
 ├── nuitka/
 │   └── ExcelWorkbench.exe          ← 单文件 exe
-├── ExcelWorkbench_v1.1.1/           ← 临时组装目录
+├── ExcelWorkbench_v1.3.0/           ← 临时组装目录
 │   ├── ExcelWorkbench.exe
 │   ├── 使用指南.pdf
 │   ├── 使用指南.md
-│   └── README.md
-└── ExcelWorkbench_v1.1.1.zip        ← 最终发布包
+│   ├── README.md
+│   └── docs/                        ← README 中的界面截图
+└── ExcelWorkbench_v1.3.0.zip        ← 最终发布包
 ```
 
 最终发布包中**只有**：
@@ -48,6 +49,7 @@ dist/
 - `使用指南.pdf`
 - `使用指南.md`
 - `README.md`
+- `docs/`（README 引用的界面截图）
 
 没有 DLL、源码、测试数据、`config`、`logs`、`out_put`。
 
@@ -97,10 +99,10 @@ powershell -ExecutionPolicy Bypass -File packaging\build_nuitka.ps1
 编辑 `packaging/build_nuitka.ps1` 顶部的：
 
 ```powershell
-$Version = "1.1.1"
-$ProductName = "Excel 批量工作台"
-$CompanyName = "Excel 批量工作台 开发团队"
-$CopyrightText = "Copyright © 2026 Excel 批量工作台 开发团队"
+$Version = "1.3.0"
+$ProductName = "Excel 工作台"
+$CompanyName = "Excel 工作台 开发团队"
+$CopyrightText = "Copyright © 2026 Excel 工作台 开发团队"
 ```
 
 重新执行脚本即可。
@@ -110,6 +112,15 @@ $CopyrightText = "Copyright © 2026 Excel 批量工作台 开发团队"
 用户要求最终只交付一个 exe。`--onefile` 会把依赖打在一个 exe 内。运行时 Nuitka 仍会在临时目录解包内部依赖，这是单文件程序的正常机制，退出后会自动清理；exe 所在目录不会出现一堆 DLL。
 
 构建时排除了本工具不需要的 `matplotlib`、`scipy`，减少体积和杀毒软件误报概率。
+
+### QtWebEngine（流水线画布）注意
+
+v1.3 的「流水线画布」使用 `QWebEngineView`，运行依赖：
+
+- `PyQtWebEngine`（已加入 `requirements.txt`）；
+- Qt 自带的 `QtWebEngineProcess.exe`、`resources/`、`locales/` 等运行文件。
+
+脚本显式包含 `PyQt5.QtWebEngineWidgets` 和 `PyQt5.QtWebChannel`。如果打包后打开「流水线画布」只显示空白或提示加载失败，请检查 Nuitka 的 PyQt5 插件是否把上述 QtWebEngine 运行文件收进单文件包；可临时改用 `--standalone` 构建对照排查。
 
 ## 不打包哪些东西
 

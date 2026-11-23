@@ -3,13 +3,15 @@ import os
 from typing import Optional
 
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (QAbstractItemView, QComboBox, QDialog,
+from PyQt5.QtWidgets import (QAbstractItemView, QComboBox, QDialog, QFrame,
                              QHBoxLayout, QHeaderView, QLabel, QMessageBox,
-                             QPushButton, QTableWidget, QTableWidgetItem,
-                             QVBoxLayout)
+                             QPushButton, QSizePolicy, QTableWidget,
+                             QTableWidgetItem, QVBoxLayout)
 
 from app.core.errors import explain, record_exception
 from app.core.preview import PREVIEW_ROWS, PreviewData, read_preview
+from app.ui.widgets.backdrop import SoftBackdrop
+from app.ui.widgets.brand import BrandLogo
 
 
 class PreviewDialog(QDialog):
@@ -20,25 +22,46 @@ class PreviewDialog(QDialog):
         self._path = path
         self._loading = False
         self.setObjectName("PreviewDialog")
-        self.setWindowTitle(f"预览 - {os.path.basename(path)}")
-        self.resize(920, 560)
-        self.setMinimumSize(620, 400)
+        self.setWindowTitle(f"数据预览 - {os.path.basename(path)}")
+        self.resize(960, 600)
+        self.setMinimumSize(680, 440)
         self._build_ui()
         self._load()
 
     # ------------------------------------------------------------ 构建界面
     def _build_ui(self) -> None:
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(18, 16, 18, 16)
+        outer = QVBoxLayout(self)
+        outer.setContentsMargins(0, 0, 0, 0)
+        outer.setSpacing(0)
+
+        backdrop = SoftBackdrop(self)
+        backdrop.setObjectName("PreviewBackdrop")
+        outer.addWidget(backdrop)
+        layout = QVBoxLayout(backdrop)
+        layout.setContentsMargins(24, 20, 24, 18)
         layout.setSpacing(12)
 
         head = QHBoxLayout()
-        head.setSpacing(10)
-        title = QLabel(os.path.basename(self._path))
-        title.setObjectName("CardTitle")
-        title.setToolTip(self._path)
-        head.addWidget(title)
-        head.addStretch(1)
+        head.setSpacing(11)
+        logo = BrandLogo(32)
+        head.addWidget(logo, 0, Qt.AlignVCenter)
+
+        title_box = QVBoxLayout()
+        title_box.setContentsMargins(0, 0, 0, 0)
+        title_box.setSpacing(1)
+        title = QLabel("数据预览")
+        title.setObjectName("PreviewTitle")
+        self.file_label = QLabel(os.path.basename(self._path))
+        self.file_label.setObjectName("PreviewFilename")
+        self.file_label.setToolTip(self._path)
+        self.file_label.setSizePolicy(QSizePolicy.Ignored, QSizePolicy.Preferred)
+        title_box.addWidget(title)
+        title_box.addWidget(self.file_label)
+        head.addLayout(title_box, 1)
+
+        readonly = QLabel("只读")
+        readonly.setObjectName("ReadonlyBadge")
+        head.addWidget(readonly, 0, Qt.AlignVCenter)
 
         self.sheet_label = QLabel("工作表")
         self.sheet_label.setObjectName("FieldLabel")
@@ -50,21 +73,35 @@ class PreviewDialog(QDialog):
         layout.addLayout(head)
 
         self.info_label = QLabel(f"正在读取前 {PREVIEW_ROWS} 行……")
-        self.info_label.setObjectName("HintLabel")
+        self.info_label.setObjectName("PreviewInfo")
+        self.info_label.setWordWrap(True)
         layout.addWidget(self.info_label)
+
+        panel = QFrame()
+        panel.setObjectName("GlassPanel")
+        panel_layout = QVBoxLayout(panel)
+        panel_layout.setContentsMargins(6, 6, 6, 6)
+        panel_layout.setSpacing(0)
 
         self.table = QTableWidget()
         self.table.setObjectName("PreviewTable")
+        self.table.setFrameShape(QFrame.NoFrame)
         self.table.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         self.table.setAlternatingRowColors(True)
+        self.table.setShowGrid(False)
         self.table.setWordWrap(False)
         self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
         self.table.horizontalHeader().setStretchLastSection(True)
-        self.table.verticalHeader().setDefaultSectionSize(26)
-        layout.addWidget(self.table, 1)
+        self.table.verticalHeader().setDefaultSectionSize(28)
+        panel_layout.addWidget(self.table)
+        layout.addWidget(panel, 1)
 
         bottom = QHBoxLayout()
+        bottom.setSpacing(10)
+        privacy = QLabel("仅本地预览 · 不会修改原文件")
+        privacy.setObjectName("HintLabel")
+        bottom.addWidget(privacy)
         bottom.addStretch(1)
         self.btn_close = QPushButton("关闭")
         self.btn_close.setObjectName("GhostButton")

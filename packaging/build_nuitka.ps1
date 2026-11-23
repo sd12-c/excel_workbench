@@ -1,14 +1,14 @@
-﻿# Excel 批量工作台 · Nuitka 打包脚本
+# Excel 工作台 · Nuitka 打包脚本
 # 用法：powershell -ExecutionPolicy Bypass -File packaging\build_nuitka.ps1
 $ErrorActionPreference = "Stop"
 
 $Root = Split-Path -Parent $PSScriptRoot
 Set-Location $Root
 
-$Version = "1.1.1"
-$ProductName = "Excel 批量工作台"
-$CompanyName = "Excel 批量工作台 开发团队"
-$CopyrightText = "Copyright © 2026 Excel 批量工作台 开发团队"
+$Version = "1.3.0"
+$ProductName = "Excel 工作台"
+$CompanyName = "Excel 工作台 开发团队"
+$CopyrightText = "Copyright © 2026 Excel 工作台 开发团队"
 $ExeName = "ExcelWorkbench.exe"
 
 $IconPath = Join-Path $Root "app\resources\app.ico"
@@ -48,6 +48,8 @@ $nuitkaArgs = @(
     "-m", "nuitka",
     "--onefile",
     "--enable-plugin=pyqt5",
+    "--include-module=PyQt5.QtWebEngineWidgets",
+    "--include-module=PyQt5.QtWebChannel",
     "--include-data-dir=app/resources=app/resources",
     "--nofollow-import-to=matplotlib",
     "--nofollow-import-to=scipy",
@@ -105,6 +107,10 @@ Copy-Item -LiteralPath $ExePath -Destination (Join-Path $StageDir $ExeName)
 Copy-Item -LiteralPath $GuidePath -Destination $StageDir
 Copy-Item -LiteralPath $GuideMdPath -Destination $StageDir
 Copy-Item -LiteralPath $ReadmePath -Destination $StageDir
+$DocsDir = Join-Path $Root "docs"
+if (Test-Path $DocsDir) {
+    Copy-Item -LiteralPath $DocsDir -Destination $StageDir -Recurse
+}
 
 Compress-Archive -Path (Join-Path $StageDir "*") -DestinationPath $ZipPath -Force
 

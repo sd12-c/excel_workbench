@@ -10,10 +10,10 @@ from app.core.common import quote_path
 from app.core.errors import explain, record_exception
 
 _COLORS = {
-    "info": "#cfd6e6",
-    "success": "#5ddc9a",
-    "warn": "#ffc46b",
-    "error": "#ff7f7f",
+    "info": "#4b5870",
+    "success": "#1f9d6b",
+    "warn": "#b4771b",
+    "error": "#c93b4a",
 }
 
 
@@ -77,7 +77,7 @@ class LogPanel(QWidget):
     def append(self, message: str, level: str = "info") -> None:
         stamp = datetime.datetime.now().strftime("%H:%M:%S")
         color = _COLORS.get(level, _COLORS["info"])
-        html = (f'<span style="color:#5c6a85">[{stamp}]</span> '
+        html = (f'<span style="color:#98a2b6">[{stamp}]</span> '
                 f'<span style="color:{color}">{escape(str(message))}</span>')
         self.view.append(html)
         self.view.verticalScrollBar().setValue(

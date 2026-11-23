@@ -56,6 +56,13 @@ def read_preview(path: str,
     return PreviewData(columns, table_rows, sheet_names, target or "")
 
 
+def preview_frame(frame: pd.DataFrame,
+                  rows: int = PREVIEW_ROWS) -> PreviewData:
+    """把内存中的 DataFrame 转成与 :func:`read_preview` 相同的预览结构。"""
+    columns, table_rows = _to_table(frame.head(max(int(rows), 0)))
+    return PreviewData(columns, table_rows)
+
+
 def _to_table(frame: pd.DataFrame) -> Tuple[List[str], List[List[str]]]:
     columns = [str(column) for column in frame.columns]
     rows = [[_cell_text(value) for value in record]

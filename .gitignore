@@ -3,7 +3,16 @@ __pycache__/
 *.pyo
 out_put/
 logs/
+测试表格/
 config/scheme.json
+config/lens_state.json
+config/pipeline_templates.json
+config/webengine/
+.tmp_pipeline_test/
+.tmp_pipeline_run/
+.tmp_edge_profile*/
+.tmp_edge_cdp/
+.tmp_web_test/
 .nuitka_cache/
 dist/
 nuitka-crash-report.xml

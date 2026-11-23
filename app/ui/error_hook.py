@@ -17,13 +17,16 @@ def install(window) -> None:
             record_exception(exc, context)
             info = explain(exc)
             panel = getattr(window, "log_panel", None)
-            if panel is None:
+            if panel is not None:
+                panel.append(f"✗ {context}出错：{info.title}", "error")
+                if info.detail:
+                    panel.append(f"    原因：{info.detail}", "error")
+                if info.hint:
+                    panel.append(f"    建议：{info.hint}", "error")
                 return
-            panel.append(f"✗ {context}出错：{info.title}", "error")
-            if info.detail:
-                panel.append(f"    原因：{info.detail}", "error")
-            if info.hint:
-                panel.append(f"    建议：{info.hint}", "error")
+            reporter = getattr(window, "report_global_error", None)
+            if reporter is not None:
+                reporter(f"{context}：{info.title}\n{info.detail}\n{info.hint}")
         except Exception:  # noqa: BLE001 - 兜底逻辑本身绝不能再抛出异常
             pass
 
