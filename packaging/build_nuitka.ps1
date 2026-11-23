@@ -1,8 +1,7 @@
-# Excel 工作台 · Nuitka 打包脚本
-# 用法：powershell -ExecutionPolicy Bypass -File packaging\build_nuitka.ps1
+﻿# Excel 工作台 · Nuitka 打包脚本（Qt5 PyQt5 WebEngine专用）
 $ErrorActionPreference = "Stop"
 
-$Root = Split-Path -Parent $PSScriptRoot
+$Root = Split-Path -Parent $MyInvocation.MyCommand.Path | Split-Path -Parent
 Set-Location $Root
 
 $Version = "1.3.0"
@@ -12,42 +11,57 @@ $CopyrightText = "Copyright © 2026 Excel 工作台 开发团队"
 $ExeName = "ExcelWorkbench.exe"
 
 $IconPath = Join-Path $Root "app\resources\app.ico"
-$GuidePath = Join-Path $Root "使用指南.pdf"
-$GuideMdPath = Join-Path $Root "使用指南.md"
-$ReadmePath = Join-Path $Root "README.md"
+$GuidePdf = Join-Path $Root "使用指南.pdf"
+$GuideMd = Join-Path $Root "使用指南.md"
+$ReadmeMd = Join-Path $Root "README.md"
+
 $OutputDir = Join-Path $Root "dist\nuitka"
+$NuitkaDistDir = Join-Path $OutputDir "main.dist"
 $StageDir = Join-Path $Root "dist\ExcelWorkbench_v$Version"
-$ZipPath = Join-Path $Root "dist\ExcelWorkbench_v$Version.zip"
+$ZipFile = Join-Path $Root "dist\ExcelWorkbench_v$Version.zip"
 $CacheDir = Join-Path $Root ".nuitka_cache"
 
-if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
-    throw "没有找到 python，请先安装 Python 并加入 PATH。"
-}
-if (-not (Test-Path $IconPath)) {
-    throw "缺少图标文件：$IconPath"
-}
-if (-not (Test-Path $GuidePath)) {
-    throw "缺少使用指南：$GuidePath"
-}
+# ========== 自动读取Qt路径 ==========
+$qtInfo = python -c "
+from PyQt5.QtCore import QLibraryInfo
+print(QLibraryInfo.location(QLibraryInfo.LibraryExecutablesPath))
+print(QLibraryInfo.location(QLibraryInfo.DataPath))
+"
+$qtBinPath = $qtInfo[0]
+$qtDataPath = $qtInfo[1]
 
-# Nuitka 默认缓存目录在当前环境可能不可写，改用项目内缓存
+$IcuSrc = Join-Path $qtDataPath "resources\icudtl.dat"
+$WebEngineProcessSrc = Join-Path $qtBinPath "QtWebEngineProcess.exe"
+$PakSrc = Join-Path $qtDataPath "resources\qtwebengine_resources.pak"
+$Pak100Src = Join-Path $qtDataPath "resources\qtwebengine_resources_100p.pak"
+$Pak200Src = Join-Path $qtDataPath "resources\qtwebengine_resources_200p.pak"
+$DevToolsPakSrc = Join-Path $qtDataPath "resources\qtwebengine_devtools_resources.pak"
+$LocalesSrc = Join-Path $qtDataPath "qtwebengine_locales"
+
+# 前置校验（Qt5只校验这两个核心文件）
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) { throw "未找到python命令" }
+if (-not (Test-Path $IconPath)) { throw "图标不存在：$IconPath" }
+if (-not (Test-Path $IcuSrc)) { throw "找不到 icudtl.dat：$IcuSrc" }
+if (-not (Test-Path $WebEngineProcessSrc)) { throw "找不到 QtWebEngineProcess.exe：$WebEngineProcessSrc" }
+
 $env:NUITKA_CACHE_DIR = $CacheDir
-# 源码/版本资源含中文，强制 MSVC 按 UTF-8 读取，避免代码页 936 报错
 $env:CL = "/utf-8"
 $env:VSLANG = "1033"
-New-Item -ItemType Directory -Force -Path $CacheDir | Out-Null
 
-Write-Host "==> 清理旧构建..." -ForegroundColor Cyan
-Remove-Item $OutputDir -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item $StageDir -Recurse -Force -ErrorAction SilentlyContinue
-Remove-Item $ZipPath -Force -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $OutputDir | Out-Null
+# ========== 清理旧产物 ==========
+Write-Host "==> 清理旧构建文件" -ForegroundColor Cyan
+if (Test-Path $OutputDir) { Remove-Item $OutputDir -Recurse -Force }
+if (Test-Path $StageDir) { Remove-Item $StageDir -Recurse -Force }
+if (Test-Path $ZipFile) { Remove-Item $ZipFile -Force }
+New-Item -ItemType Directory -Force $OutputDir | Out-Null
 
-Write-Host "==> 开始 Nuitka 单文件构建..." -ForegroundColor Cyan
+# ========== Nuitka打包 ==========
+Write-Host "==> 开始 Nuitka Standalone 打包（PyQt5 WebEngine Qt5）" -ForegroundColor Cyan
 $nuitkaArgs = @(
     "-m", "nuitka",
-    "--onefile",
+    "--standalone",
     "--enable-plugin=pyqt5",
+    "--include-qt-plugins=sensible",
     "--include-module=PyQt5.QtWebEngineWidgets",
     "--include-module=PyQt5.QtWebChannel",
     "--include-data-dir=app/resources=app/resources",
@@ -55,14 +69,12 @@ $nuitkaArgs = @(
     "--nofollow-import-to=scipy",
     "--noinclude-pytest-mode=nofollow",
     "--noinclude-unittest-mode=nofollow",
-    "--noinclude-pydoc-mode=nofollow",
     "--windows-console-mode=disable",
     "--windows-icon-from-ico=$IconPath",
     "--company-name=$CompanyName",
     "--product-name=$ProductName",
+    "--product-version=$Version",
     "--file-version=$Version.0",
-    "--product-version=$Version.0",
-    "--file-description=$ProductName",
     "--copyright=$CopyrightText",
     "--output-dir=$OutputDir",
     "--output-filename=$ExeName",
@@ -70,82 +82,61 @@ $nuitkaArgs = @(
     "--assume-yes-for-downloads",
     "main.py"
 )
-& python @nuitkaArgs
-if ($LASTEXITCODE -ne 0) {
-    throw "Nuitka 构建失败，退出码：$LASTEXITCODE"
+& python $nuitkaArgs
+if ($LASTEXITCODE -ne 0) { throw "Nuitka打包失败，退出码 $LASTEXITCODE" }
+
+$ExeFullPath = Join-Path $NuitkaDistDir $ExeName
+if (-not (Test-Path $ExeFullPath)) { throw "打包完成，但找不到exe：$ExeFullPath" }
+
+# ========== 部署Qt5 WebEngine资源（重点：Qt5不需要v8快照） ==========
+Write-Host "==> 部署QtWebEngine资源" -ForegroundColor Cyan
+$libexecDir = Join-Path $NuitkaDistDir "libexec"
+$resDir = Join-Path $NuitkaDistDir "resources"
+New-Item -ItemType Directory -Force $libexecDir | Out-Null
+New-Item -ItemType Directory -Force $resDir | Out-Null
+
+# qt.conf（主程序读取）
+$qtConfContent = @'
+[Paths]
+Prefix = .
+LibExecPath = libexec
+ResourcesPath = resources
+'@
+$qtConfFile = Join-Path $NuitkaDistDir "qt.conf"
+$qtConfContent | Out-File $qtConfFile -Encoding utf8
+
+# 复制Qt5必需资源
+Copy-Item $WebEngineProcessSrc (Join-Path $libexecDir "QtWebEngineProcess.exe") -Force
+Copy-Item $IcuSrc (Join-Path $resDir "icudtl.dat") -Force
+Copy-Item $PakSrc (Join-Path $resDir "qtwebengine_resources.pak") -Force
+if (Test-Path $Pak100Src) { Copy-Item $Pak100Src (Join-Path $resDir "qtwebengine_resources_100p.pak") -Force }
+if (Test-Path $Pak200Src) { Copy-Item $Pak200Src (Join-Path $resDir "qtwebengine_resources_200p.pak") -Force }
+if (Test-Path $DevToolsPakSrc) { Copy-Item $DevToolsPakSrc (Join-Path $resDir "qtwebengine_devtools_resources.pak") -Force }
+if (Test-Path $LocalesSrc) {
+    Copy-Item $LocalesSrc (Join-Path $resDir "qtwebengine_locales") -Recurse -Force
 }
 
-$ExePath = Join-Path $OutputDir $ExeName
-if (-not (Test-Path $ExePath)) {
-    throw "构建结束但没有找到 exe：$ExePath"
-}
+# ========== 组装发布包 ==========
+Write-Host "==> 组装发布包目录" -ForegroundColor Cyan
+New-Item -ItemType Directory -Force $StageDir | Out-Null
+Copy-Item (Join-Path $NuitkaDistDir "*") $StageDir -Recurse -Force
 
-# 可选：使用代码签名证书降低 SmartScreen / 杀毒软件误报。
-# 设置 CODE_SIGN_PFX（.pfx 路径）、CODE_SIGN_PASSWORD，并确保 signtool 在 PATH，
-# 或设置 SIGNTOOL_PATH 指向 signtool.exe。
-if ($env:CODE_SIGN_PFX) {
-    $signTool = $env:SIGNTOOL_PATH
-    if (-not $signTool) {
-        $command = Get-Command signtool.exe -ErrorAction SilentlyContinue
-        if ($command) { $signTool = $command.Source }
-    }
-    if (-not $signTool) {
-        Write-Warning "设置了 CODE_SIGN_PFX，但没有找到 signtool.exe，跳过签名。"
-    } else {
-        Write-Host "==> 正在签名..." -ForegroundColor Cyan
-        & $signTool sign /fd SHA256 /f $env:CODE_SIGN_PFX /p $env:CODE_SIGN_PASSWORD `
-            /tr http://timestamp.digicert.com /td SHA256 $ExePath
-        if ($LASTEXITCODE -ne 0) {
-            throw "代码签名失败，退出码：$LASTEXITCODE"
-        }
-    }
-}
+# 按需复制文档，不需要就注释
+if (Test-Path $GuidePdf) { Copy-Item $GuidePdf $StageDir -Force }
+if (Test-Path $GuideMd) { Copy-Item $GuideMd $StageDir -Force }
+if (Test-Path $ReadmeMd) { Copy-Item $ReadmeMd $StageDir -Force }
 
-Write-Host "==> 组装压缩包（只放 exe 和说明文档）..." -ForegroundColor Cyan
-New-Item -ItemType Directory -Force -Path $StageDir | Out-Null
-Copy-Item -LiteralPath $ExePath -Destination (Join-Path $StageDir $ExeName)
-Copy-Item -LiteralPath $GuidePath -Destination $StageDir
-Copy-Item -LiteralPath $GuideMdPath -Destination $StageDir
-Copy-Item -LiteralPath $ReadmePath -Destination $StageDir
-$DocsDir = Join-Path $Root "docs"
-if (Test-Path $DocsDir) {
-    Copy-Item -LiteralPath $DocsDir -Destination $StageDir -Recurse
-}
+# ========== 压缩：压缩包根目录直接是exe ==========
+Write-Host "==> 生成压缩包 $ZipFile" -ForegroundColor Cyan
+Compress-Archive -Path (Join-Path $StageDir "*") -DestinationPath $ZipFile -Force
 
-Compress-Archive -Path (Join-Path $StageDir "*") -DestinationPath $ZipPath -Force
-
-# 校验压缩包内容，确保没有源码、缓存、测试数据和运行目录
-Add-Type -AssemblyName System.IO.Compression.FileSystem
-$archive = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
-try {
-    $entries = @($archive.Entries | ForEach-Object { $_.FullName })
-} finally {
-    $archive.Dispose()
-}
-$forbidden = $entries | Where-Object {
-    $_ -match '(^|/)(config|logs|out_put|测试表格|app)(/|$)' -or
-    $_ -match '\.(py|pyc|pyo|pyd|git|gitignore)$' -or
-    $_ -match '(^|/)\.git(/|$)'
-}
-if ($forbidden) {
-    throw "压缩包中出现不应包含的内容：`n$($forbidden -join "`n")"
-}
-
-$exeCount = @(Get-ChildItem -LiteralPath $StageDir -Filter *.exe).Count
-$dllCount = @(Get-ChildItem -LiteralPath $StageDir -Filter *.dll -Recurse).Count
-if ($exeCount -ne 1 -or $dllCount -ne 0) {
-    throw "产物不是单文件：exe=$exeCount, dll=$dllCount"
-}
-
-$info = (Get-Item -LiteralPath $ExePath).VersionInfo
-Write-Host ""
-Write-Host "==> 构建完成" -ForegroundColor Green
-Write-Host "EXE : $ExePath"
-Write-Host "ZIP : $ZipPath"
-Write-Host "大小: $([math]::Round((Get-Item $ExePath).Length / 1MB, 1)) MB"
-Write-Host "版本: $($info.FileVersion)"
-Write-Host "产品: $($info.ProductName)"
-Write-Host "公司: $($info.CompanyName)"
-Write-Host "版权: $($info.LegalCopyright)"
-Write-Host "压缩包内容:"
-$entries | ForEach-Object { Write-Host "  - $_" }
+# ========== 输出信息 ==========
+$exeInfo = (Get-Item $ExeFullPath)
+Write-Host "`n==> 构建完成" -ForegroundColor Green
+Write-Host "EXE : $ExeFullPath"
+Write-Host "ZIP : $ZipFile"
+Write-Host "大小: $([math]::Round($exeInfo.Length / 1MB, 1)) MB"
+Write-Host "版本: $Version.0"
+Write-Host "产品: $ProductName"
+Write-Host "公司: $CompanyName"
+Write-Host "版权: $CopyrightText`n"

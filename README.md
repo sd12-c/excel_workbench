@@ -83,9 +83,9 @@ python main.py --workbench
 - 输出文件被 Excel / WPS 占用时，会给出中文提示；合并的「冲突重命名」开关可自动避让。
 - 失败信息会直接显示在透镜里，完整技术细节写入 `logs/error.log`。
 
-## 打包 Windows 单文件 exe
+## 打包 Windows 安装包
 
-项目提供 Nuitka 打包脚本，生成带图标、版本信息和单文件 exe 的发布压缩包：
+项目提供 Nuitka 打包脚本，生成带图标、版本信息和 exe 的发布压缩包：
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File packaging\build_nuitka.ps1
@@ -97,7 +97,14 @@ powershell -ExecutionPolicy Bypass -File packaging\build_nuitka.ps1
 dist/ExcelWorkbench_v1.3.0.zip
 ```
 
-压缩包只包含 `ExcelWorkbench.exe` 和说明文档，不包含源码、测试数据或 `config` / `logs` / `out_put`。程序首次运行会在 exe 旁自动创建这些目录。详见 [打包说明](packaging/README.md)。
+压缩包包含**全部运行依赖**和**说明文档**，不包含源码、测试数据或 `config` / `logs` / `out_put`。程序首次运行会在 exe 旁自动创建这些目录。详见 [打包说明](packaging/README.md)。
+
+**特别提醒**:如果打包后，使用高级模式时闪退，并且在exe同目录下debug.log中出现： Couldn't mmap icu data file 的错误，解决方法如下:
+  1. 找到你的python目录（如果你使用的虚拟环境，请查看虚拟环境目录）
+  2. 进入python目录，找到"Lib\site-packages\PyQt5\Qt5\resources"目录
+  3. 复制其中所有文件
+  4. 粘贴到ExcelWorkbench_v1.3.0.exe同目录下
+
 
 ## 项目结构
 
